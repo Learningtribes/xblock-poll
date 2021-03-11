@@ -2,6 +2,12 @@ function PollEditUtil(runtime, element, pollType) {
     var self = this;
     var notify;
 
+
+    Handlebars.registerHelper('translateNoun', function (str) {
+        var firstLetter = str.slice(0,1);
+        return gettext(firstLetter.toUpperCase() + str.substring(1));
+    })
+
     // These URLs aren't validated in real time, so even if they don't exist for a type of block
     // we can create a reference to them.
     this.loadAnswers = runtime.handlerUrl(element, 'load_answers');
@@ -68,6 +74,31 @@ function PollEditUtil(runtime, element, pollType) {
             }
             load(mapping[task]);
         }
+
+        if (LearningTribes && LearningTribes.QuestionMark) {
+            $wrappers = $('.wrapper-comp-settings .question-mark-wrapper')
+            $wrappers.each(function(i, wrapper){
+                new LearningTribes.QuestionMark(wrapper)
+            })
+        }
+
+        function renderSwithcher(wrapper) {
+            var $select = $(wrapper).prev();
+            new LearningTribes.Switcher(wrapper, $select.find('option:selected').val() === 'true' ? 'true' : 'false',
+                function(checked){
+                var checkedStr = checked ? 'true' : 'false';
+                $select.find('option').removeAttr('selected')
+                $select.find('option[value='+checkedStr+']')
+                    .attr('selected', 'selected')
+                }
+            )
+        }
+        if (LearningTribes && LearningTribes.Switcher) {
+            var $wrappers = $('.wrapper-comp-settings').find('.switcher-wrapper');
+            $wrappers.each(function(i, wrapper){
+                renderSwithcher(wrapper)
+            })
+        }
     };
 
     this.scrollTo = function (item){
@@ -101,7 +132,7 @@ function PollEditUtil(runtime, element, pollType) {
     this.empowerDeletes = function (scope) {
         // Activates the delete buttons on rendered line items.
         $('.poll-delete-answer', scope).click(function () {
-            $(this).parent().remove();
+            $(this).closest('.field').remove();
         });
     };
 
