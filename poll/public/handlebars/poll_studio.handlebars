@@ -25,6 +25,13 @@
         </li>
         {{/if}}
     </ul>
+    <div class="actions">
+        <div class="poll-move">
+            <button class="poll-move-up">&#9650;<span class="sr">&nbsp;{{gettext "move poll up"}}</span></button>
+            <button class="poll-move-down">&#9660;<span class="sr">&nbsp;{{gettext "move poll down"}}</span></button>
+        </div>
+        <!--<button class="button action-button poll-delete-answer">{{gettext "Delete" }}</button>-->
+    </div>
 
     <!--<div class="wrapper-comp-setting">
         <label class="label setting-label poll-setting-label" for="{{noun}}-label-{{key}}">
@@ -39,13 +46,7 @@
         <input class="input setting-input" name="{{noun}}-img_alt-{{key}}" id="{{noun}}-img_alt-{{key}}" value="{{img_alt}}" type="text" />
         {{/if}}
         </div>
-        <div class="actions">
-            <div class="poll-move">
-                <button class="poll-move-up">&#9650;<span class="sr">&nbsp;{{gettext "move poll up"}}</span></button>
-                <button class="poll-move-down">&#9660;<span class="sr">&nbsp;{{gettext "move poll down"}}</span></button>
-            </div>
-            <button class="button action-button poll-delete-answer">{{gettext "Delete" }}</button>
-        </div>
+
     </div>-->
     <span class="tip setting-help">
         {{gettext "You can make limited use of Markdown in answer texts, preferably only bold and italics."}}

@@ -148,7 +148,7 @@ function PollEditUtil(runtime, element, pollType) {
             self.scrollTo(tag);
             ev.preventDefault();
         });
-        $('.poll-move-down', scope).click(function () {
+        $('.poll-move-down', scope).click(function (ev) {
             var tag = $(this).parents('li');
             if ((tag.index() >= ($(bottomMarker).index() - 1))) {
                 return;
