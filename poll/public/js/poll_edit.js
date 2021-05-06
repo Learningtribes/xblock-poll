@@ -24,7 +24,8 @@ function PollEditUtil(runtime, element, pollType) {
 
         self.answerTemplate = Handlebars.compile(temp);
 
-        $(element).find('.cancel-button', element).bind('click', function() {
+        $(element).find('.cancel-button', element).bind('click', function(e) {
+            e.preventDefault();
             runtime.notify('cancel', {});
         });
         var button_mapping = self.mappings[pollType]['buttons'];
