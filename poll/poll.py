@@ -1229,6 +1229,6 @@ class SurveyBlock(PollBase, CSVExportMixin):
                     choices = state.get('choices')
                     if choices:
                         choice = choices[q[0]]
-                        row.append(answers_dict[choice])
+                        row.append("")
                 data[sm.student.id] = row
         return [header_row + questions] + data.values()
