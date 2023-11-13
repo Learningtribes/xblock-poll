@@ -258,9 +258,9 @@ function PollEditUtil(runtime, element, pollType) {
                 self.gather(this, tracker, data, prefix, field)
             });
         }
-        data['display_name'] = $('#poll-display-name', element).val();
-        data['question'] = $('#poll-question-editor', element).val();
-        data['feedback'] = $('#poll-feedback-editor', element).val();
+        data['display_name'] = DOMPurify.sanitize($('#poll-display-name', element).val());
+        data['question'] = DOMPurify.sanitize($('#poll-question-editor', element).val());
+        data['feedback'] = DOMPurify.sanitize($('#poll-feedback-editor', element).val());
         data['max_submissions'] = $('#poll-max-submissions', element).val();
         // Convert to boolean for transfer.
         data['private_results'] = eval($('#poll-private-results', element).val());
