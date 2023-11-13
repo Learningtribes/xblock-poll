@@ -228,7 +228,7 @@ function PollEditUtil(runtime, element, pollType) {
             data[field].push({'key': name})
         }
         var index = tracker.indexOf(name);
-        data[field][index][key] = scope.value;
+        data[field][index][key] = DOMPurify.sanitize(scope.value);
         return true
     };
 
