@@ -24,14 +24,14 @@ function PollEditUtil(runtime, element, pollType) {
 
         self.answerTemplate = Handlebars.compile(temp);
 
-        $(element).find('.cancel-button', element).bind('click', function(e) {
+        $(element).find('.cancel-button', element).on('click', function(e) {
             e.preventDefault();
             runtime.notify('cancel', {});
         });
         var button_mapping = self.mappings[pollType]['buttons'];
         for (var key in button_mapping) {
             if (button_mapping.hasOwnProperty(key)) {
-                $(key, element).click(
+                $(key, element).on('click',
                     // The nature of the closure forces us to make a custom function here.
                     function (context_key) {
                         return function () {
@@ -59,7 +59,7 @@ function PollEditUtil(runtime, element, pollType) {
             }
         }
 
-        $(element).find('.save-button', element).bind('click', self.pollSubmitHandler);
+        $(element).find('.save-button', element).on('click', self.pollSubmitHandler);
 
         var mapping = self.mappings[pollType]['onLoad'];
         for (var task in mapping) {
@@ -132,14 +132,14 @@ function PollEditUtil(runtime, element, pollType) {
 
     this.empowerDeletes = function (scope) {
         // Activates the delete buttons on rendered line items.
-        $('.poll-delete-answer', scope).click(function () {
+        $('.poll-delete-answer', scope).on('click', function () {
             $(this).closest('.field').remove();
         });
     };
 
     this.empowerArrows = function(scope, topMarker, bottomMarker) {
         // Activates the arrows on rendered line items.
-        $('.poll-move-up', scope).click(function (ev) {
+        $('.poll-move-up', scope).on('click', function (ev) {
             var tag = $(this).parents('li');
             if (tag.index() <= ($(topMarker).index() + 1)){
                 return;
@@ -149,7 +149,7 @@ function PollEditUtil(runtime, element, pollType) {
             self.scrollTo(tag);
             ev.preventDefault();
         });
-        $('.poll-move-down', scope).click(function (ev) {
+        $('.poll-move-down', scope).on('click', function (ev) {
             var tag = $(this).parents('li');
             if ((tag.index() >= ($(bottomMarker).index() - 1))) {
                 return;
@@ -237,7 +237,7 @@ function PollEditUtil(runtime, element, pollType) {
         for (var line in errors) {
             // Javascript has no sane HTML escape method.
             // Do this instead.
-            new_list.push($('<div/>').text(errors[line]).html())
+            new_list.push($('<div></div>').text(errors[line]).html())
         }
         return new_list.join('<br />')
     };
