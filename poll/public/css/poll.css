@@ -24,15 +24,6 @@
     height: 100%;
 }
 
-.poll-result-input-container {
-    display: inline-block;
-    vertical-align: middle;
-}
-
-.poll-result-input-container input {
-    margin: 0 .5em 0 0;
-}
-
 .poll-input-container input[type="radio"] {
     margin: 0;
 }
@@ -384,10 +375,6 @@ th.survey-answer {
 .rtl .poll-input-container, .rtl .poll-answer-text{
     padding-left: .5em;
     padding-right: 0;
-}
-
-.rtl .poll-result-input-container input{
-    margin: 0 0 0 .5em;
 }
 
 .rtl .poll-answer-label{

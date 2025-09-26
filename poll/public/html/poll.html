@@ -24,8 +24,12 @@
           {% for key, value in answers %}
             <div class="poll-answer">
               <div class="poll-input-container">
-                <input type="radio" name="choice" id="poll-{{ block_id }}-answer-{{ key }}" value="{{ key }}"
-                    {% if choice == key %}checked{% endif %}/><label for="poll-{{ block_id }}-answer-{{ key }}"></label>
+                <input
+                    type="{% if multiple_choices %}checkbox{% else %}radio{% endif %}"
+                    class="ds-{% if multiple_choices %}checkbox{% else %}radio{% endif %}"
+                    name="choice" id="poll-{{ block_id }}-answer-{{ key }}" value="{{ key }}"
+                    {% if choice == key %}checked{% endif %}
+                />
               </div>
               {% if any_img %}
                 <div class="poll-image">
