@@ -239,7 +239,9 @@ function PollEditUtil(runtime, element, pollType) {
         data['max_submissions'] = $('#poll-max-submissions', element).val();
         // Convert to boolean for transfer.
         data['private_results'] = document.getElementById('poll-private-results').checked
-        data['multiple_choices'] = document.getElementById('poll-multiple-choices').checked
+        if (document.getElementById('poll-multiple-choices')) {
+            data['multiple_choices'] = document.getElementById('poll-multiple-choices').checked
+        }
 
         if (notify) {
             runtime.notify('save', {state: 'start', message: gettext("Saving")});
@@ -250,10 +252,11 @@ function PollEditUtil(runtime, element, pollType) {
             data: JSON.stringify(data),
             // There are issues with using proper status codes at the moment.
             // So we pass along a 'success' key for now.
-            success: function(result) {
-                if (result['success'] && notify) {
+            success (result) {
+                if (!notify) return
+                if (result['success']) {
                     runtime.notify('save', {state: 'end'})
-                } else if (notify) {
+                } else {
                     runtime.notify('error', {
                         'title': 'Error saving poll',
                         'message': self.format_errors(result['errors'])
