@@ -75,13 +75,6 @@ function PollEditUtil(runtime, element, pollType) {
             }
             load(mapping[task]);
         }
-
-        if (LearningTribes && LearningTribes.QuestionMark) {
-            $wrappers = $('.wrapper-comp-settings .question-mark-wrapper')
-            $wrappers.each(function(i, wrapper){
-                new LearningTribes.QuestionMark(wrapper)
-            })
-        }
     };
 
     this.scrollTo = function (item){

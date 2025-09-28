@@ -56,14 +56,20 @@
             <div class="wrapper-comp-setting">
                 <label class="label setting-label poll-setting-label" for="poll-private-results">{% trans 'Private Results' %}</label>
                 <input type="checkbox" id="poll-private-results" name="private_results" class="ds-switch" {% if private_results %}checked{% endif %} />
-                <span class="question-mark-wrapper" data-title="{% trans "When enabled, results are hidden from users" %}"></span>
+                <span class="icon-question question-mark-wrapper">
+                    <i class="fas fa-info-circle"></i>
+                    <ds-tooltip role="tooltip">{% trans "When enabled, results are hidden from users" %}</ds-tooltip>
+                </span>
             </div>
         </li>
         <li class="field comp-setting-entry is-set">
             <div class="wrapper-comp-setting">
                 <label class="label setting-label poll-setting-label" for="poll-multiple-choices">{% trans "Allow multiple selections" %}</label>
                 <input type="checkbox" id="poll-multiple-choices" name="multiple_choices" class="ds-switch" {% if multiple_choices %}checked{% endif %} />
-                <span class="question-mark-wrapper" data-title="{% trans "Allow users to select multiple answers when enabled" %}"></span>
+                <span class="icon-question question-mark-wrapper">
+                    <i class="fas fa-info-circle"></i>
+                    <ds-tooltip role="tooltip">{% trans "Allow users to select multiple answers when enabled" %}</ds-tooltip>
+                </span>
             </div>
         </li>
         <li class="field comp-setting-entry is-set">
