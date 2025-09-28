@@ -474,7 +474,7 @@ class PollBase(XBlock, ResourceMixin, PublishEventMixin, TallyMixin):
 
 @XBlock.wants('settings')
 @XBlock.needs('i18n')
-class PollBlock(PollBase, CSVExportMixin, TallyMixin):
+class PollBlock(PollBase, CSVExportMixin):
     """
     Poll XBlock. Allows a teacher to poll users, and presents the results so
     far of the poll to the user when finished.
