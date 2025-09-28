@@ -21,4 +21,5 @@
 # "AGPLv3".  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from .poll import PollBlock, SurveyBlock
+from .poll import PollBlock
+from .survey import SurveyBlock
