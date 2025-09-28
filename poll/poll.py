@@ -21,7 +21,7 @@
 # along with this program in a file in the toplevel directory called
 # "AGPLv3".  If not, see <http://www.gnu.org/licenses/>.
 #
-from abc import ABCmeta, abstractmethod
+from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 import functools
 import json
