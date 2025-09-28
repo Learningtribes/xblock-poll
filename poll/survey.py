@@ -6,14 +6,43 @@ from webob import Response
 from xblock.core import XBlock
 from xblock.fields import Scope, String, Dict, List
 
-from .poll import PollBase, CSVExportMixin, TallyMixin
+from .poll import PollBase, CSVExportMixin
 from .utils import _
 
 
-class SurveyTallyMixin(TallyMixin):
-    """
-    Manages Survey XBlock tallying.
-    """
+
+@XBlock.wants('settings')
+@XBlock.needs('i18n')
+class SurveyBlock(PollBase, CSVExportMixin, SurveyTallyMixin):
+    # pylint: disable=too-many-instance-attributes
+
+    display_name = String(default=_('Survey'))
+    # The display name affects how the block is labeled in the studio,
+    # but either way we want it to say 'Poll' by default on the page.
+    block_name = String(default=_('Poll'))
+    answers = List(
+        default=[
+            ('Y', _('Yes')),
+            ('N', _('No')),
+            ('M', _('Maybe'))
+        ],
+        scope=Scope.settings, help=_("Answer choices for this Survey")
+    )
+    questions = List(
+        default=[
+            ('enjoy', {'label': _('Are you enjoying the course?'), 'img': None, 'img_alt': None}),
+            ('recommend', {
+                'label': _('Would you recommend this course to your friends?'),
+                'img': None,
+                'img_alt': None
+            }),
+            ('learn', {'label': _('Do you think you will learn a lot?'), 'img': None, 'img_alt': None}),
+        ],
+        scope=Scope.settings, help=_("Questions for this Survey")
+    )
+    choices = Dict(help=_("The user's answers"), scope=Scope.user_state)
+    event_namespace = 'xblock.survey'
+
     tally = Dict(
         default={
             'enjoy': {'Y': 0, 'N': 0, 'M': 0}, 'recommend': {'Y': 0, 'N': 0, 'M': 0},
@@ -122,39 +151,6 @@ class SurveyTallyMixin(TallyMixin):
                 question['answers'][top_index]['top'] = True
 
         return tally, total
-
-
-@XBlock.wants('settings')
-@XBlock.needs('i18n')
-class SurveyBlock(PollBase, CSVExportMixin, SurveyTallyMixin):
-    # pylint: disable=too-many-instance-attributes
-
-    display_name = String(default=_('Survey'))
-    # The display name affects how the block is labeled in the studio,
-    # but either way we want it to say 'Poll' by default on the page.
-    block_name = String(default=_('Poll'))
-    answers = List(
-        default=[
-            ('Y', _('Yes')),
-            ('N', _('No')),
-            ('M', _('Maybe'))
-        ],
-        scope=Scope.settings, help=_("Answer choices for this Survey")
-    )
-    questions = List(
-        default=[
-            ('enjoy', {'label': _('Are you enjoying the course?'), 'img': None, 'img_alt': None}),
-            ('recommend', {
-                'label': _('Would you recommend this course to your friends?'),
-                'img': None,
-                'img_alt': None
-            }),
-            ('learn', {'label': _('Do you think you will learn a lot?'), 'img': None, 'img_alt': None}),
-        ],
-        scope=Scope.settings, help=_("Questions for this Survey")
-    )
-    choices = Dict(help=_("The user's answers"), scope=Scope.user_state)
-    event_namespace = 'xblock.survey'
 
     def author_view(self, context=None):
         """

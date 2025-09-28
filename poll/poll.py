@@ -214,110 +214,24 @@ class CSVExportMixin(object):
 
 class TallyMixin(object):
     """
-    Manages Poll or Survey XBlocks tallying.
+    Manages allying.
     """
 
-    tally = Dict(default={'R': 0, 'B': 0, 'G': 0, 'O': 0},
-                 scope=Scope.user_state_summary,
-                 help=_("Total tally of answers from students."))
-    tally_count = Integer(default=0, scope=Scope.user_state_summary, help=_("Total number of votes."))
-
-    def patch_tally_count(self):
-        """
-        Recalculate tally_count from the tally dictionary.
-        """
-        if self.tally_count:
-            return
-        self.tally_count = sum(int(v) for v in self.tally.values())
-
+    @abstractmethod
     def clean_tally(self):
-        """
-        Cleans the tally. Scoping prevents us from modifying this in the studio
-        and in the LMS the way we want to without undesirable side effects. So
-        we just clean it up on first access within the LMS, in case the studio
-        has made changes to the answers.
-        """
-        answers = dict(self.answers)
-        for key in answers:
-            if key not in self.tally:
-                self.tally[key] = 0
+        pass
 
-        for key in self.tally.keys():
-            if key not in answers:
-                del self.tally[key]
-
+    @abstractmethod
     def decrement_tally(self, choices):
-        if not choices:
-            return
+        pass
 
-        if not isinstance(choices, (list, tuple)):
-            choices = [choices]
-
-        for choice in choices:
-            if choice in self.tally and self.tally[choice] > 0:
-                self.tally[choice] -= 1
-
-        if self.tally_count > 0:
-            self.tally_count -= 1
-
+    @abstractmethod
     def increment_tally(self, choices):
-        if not choices:
-            return
+        pass
 
-        if not isinstance(choices, (list, tuple)):
-            choices = [choices]
-
-        for choice in choices:
-            if choice in self.tally:
-                self.tally[choice] += 1
-            else:
-                self.tally[choice] = 1
-
-        self.tally_count += 1
-
+    @abstractmethod
     def tally_detail(self):
-        """
-        Return a detailed dictionary from the stored tally that the
-        Handlebars template can use.
-        """
-        tally = []
-        answers = OrderedDict(self.markdown_items(self.answers))
-        total = 0
-        self.clean_tally()
-        source_tally = self.tally
-        for key, value in answers.items():
-            count = int(source_tally[key])
-            tally.append({
-                'count': count,
-                'answer': value['label'],
-                'img': value['img'],
-                'img_alt': value.get('img_alt'),
-                'key': key,
-                'first': False,
-                'choice': False,
-                'last': False,
-            })
-            total += count
-
-        total = self.tally_count or total
-
-        choice = self.get_choice()
-        for answer in tally:
-            if answer['key'] in choice:
-                answer['choice'] = True
-            try:
-                answer['percent'] = round(answer['count'] / float(total) * 100)
-            except ZeroDivisionError:
-                answer['percent'] = 0
-
-        tally.sort(key=lambda x: x['count'], reverse=True)
-        # This should always be true, but on the off chance there are
-        # no answers...
-        if tally:
-            # Mark the first and last items to make things easier for Handlebars.
-            tally[0]['first'] = True
-            tally[-1]['last'] = True
-        return tally, total
+        pass
 
 
 class ListOrString(List):
@@ -333,7 +247,7 @@ class ListOrString(List):
             raise TypeError('Value stored in a List must be None or a list, found %s' % type(value))
 
 
-class PollBase(XBlock, ResourceMixin, PublishEventMixin):
+class PollBase(XBlock, ResourceMixin, PublishEventMixin, TallyMixin):
     """
     Base class for Poll-like XBlocks.
     """
@@ -583,6 +497,108 @@ class PollBlock(PollBase, CSVExportMixin, TallyMixin):
     choice = ListOrString(default=[], scope=Scope.user_state, help=_("The student's answer(s)"))
     event_namespace = 'xblock.poll'
 
+    tally = Dict(default={'R': 0, 'B': 0, 'G': 0, 'O': 0},
+                 scope=Scope.user_state_summary,
+                 help=_("Total tally of answers from students."))
+    tally_count = Integer(default=0, scope=Scope.user_state_summary, help=_("Total number of votes."))
+
+    def patch_tally_count(self):
+        """
+        Recalculate tally_count from the tally dictionary.
+        """
+        if self.tally_count:
+            return
+        self.tally_count = sum(int(v) for v in self.tally.values())
+
+    def clean_tally(self):
+        """
+        Cleans the tally. Scoping prevents us from modifying this in the studio
+        and in the LMS the way we want to without undesirable side effects. So
+        we just clean it up on first access within the LMS, in case the studio
+        has made changes to the answers.
+        """
+        answers = dict(self.answers)
+        for key in answers:
+            if key not in self.tally:
+                self.tally[key] = 0
+
+        for key in self.tally.keys():
+            if key not in answers:
+                del self.tally[key]
+
+    def decrement_tally(self, choices):
+        if not choices:
+            return
+
+        if not isinstance(choices, (list, tuple)):
+            choices = [choices]
+
+        for choice in choices:
+            if choice in self.tally and self.tally[choice] > 0:
+                self.tally[choice] -= 1
+
+        if self.tally_count > 0:
+            self.tally_count -= 1
+
+    def increment_tally(self, choices):
+        if not choices:
+            return
+
+        if not isinstance(choices, (list, tuple)):
+            choices = [choices]
+
+        for choice in choices:
+            if choice in self.tally:
+                self.tally[choice] += 1
+            else:
+                self.tally[choice] = 1
+
+        self.tally_count += 1
+
+    def tally_detail(self):
+        """
+        Return a detailed dictionary from the stored tally that the
+        Handlebars template can use.
+        """
+        tally = []
+        answers = OrderedDict(self.markdown_items(self.answers))
+        total = 0
+        self.clean_tally()
+        source_tally = self.tally
+        for key, value in answers.items():
+            count = int(source_tally[key])
+            tally.append({
+                'count': count,
+                'answer': value['label'],
+                'img': value['img'],
+                'img_alt': value.get('img_alt'),
+                'key': key,
+                'first': False,
+                'choice': False,
+                'last': False,
+            })
+            total += count
+
+        total = self.tally_count or total
+
+        choice = self.get_choice()
+        for answer in tally:
+            if answer['key'] in choice:
+                answer['choice'] = True
+            try:
+                answer['percent'] = round(answer['count'] / float(total) * 100)
+            except ZeroDivisionError:
+                answer['percent'] = 0
+
+        tally.sort(key=lambda x: x['count'], reverse=True)
+        # This should always be true, but on the off chance there are
+        # no answers...
+        if tally:
+            # Mark the first and last items to make things easier for Handlebars.
+            tally[0]['first'] = True
+            tally[-1]['last'] = True
+        return tally, total
+
     def get_choice(self):
         """
         It's possible for the choice to have been removed since
@@ -590,19 +606,15 @@ class PollBlock(PollBase, CSVExportMixin, TallyMixin):
         the user's progress, but they should be able to vote again.
         """
         answers = dict(self.answers)
-        # No choice made
-        choice = self.choice
-        if not choice:
-            return []
 
         # If stored as a list/tuple, filter invalid keys
-        if isinstance(choice, (list, tuple)):
-            valid = [c for c in choice if c in answers]
+        if isinstance(self.choice, (list, tuple)):
+            valid = [c for c in self.choice if c in answers]
             return valid or []
 
         # Stored as a scalar (legacy support)
-        if choice in answers:
-            return [choice]
+        if self.choice in answers:
+            return [self.choice]
 
         return []
 
