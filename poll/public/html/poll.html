@@ -28,7 +28,7 @@
                     type="{% if multiple_choices %}checkbox{% else %}radio{% endif %}"
                     class="ds-{% if multiple_choices %}checkbox{% else %}radio{% endif %}"
                     name="choice" id="poll-{{ block_id }}-answer-{{ key }}" value="{{ key }}"
-                    {% if choice == key %}checked{% endif %}
+                    {% if key in choice %}checked{% endif %}
                 />
               </div>
               {% if any_img %}
