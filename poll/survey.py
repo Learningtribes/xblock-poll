@@ -13,7 +13,7 @@ from .utils import _
 
 @XBlock.wants('settings')
 @XBlock.needs('i18n')
-class SurveyBlock(PollBase, CSVExportMixin, SurveyTallyMixin):
+class SurveyBlock(PollBase, CSVExportMixin):
     # pylint: disable=too-many-instance-attributes
 
     display_name = String(default=_('Survey'))
