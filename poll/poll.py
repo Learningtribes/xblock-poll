@@ -220,7 +220,7 @@ class PollBase(XBlock, ResourceMixin, PublishEventMixin):
 
     event_namespace = 'xblock.pollbase'
     private_results = Boolean(default=False, help=_("Whether or not to display results to the user."))
-    multiple_choices = Boolean(default=False, help=_("Whether or not to allow multiple choices."))
+    multiple_choices = Boolean(default=False, help=_("Whether or not to allow multiple selections."))
     max_submissions = Integer(default=1, help=_("The maximum number of times a user may send a submission."))
     submissions_count = Integer(
         default=0, help=_("Number of times the user has sent a submission."), scope=Scope.user_state
@@ -548,7 +548,7 @@ class PollBlock(PollBase, CSVExportMixin):
             valid = [c for c in self.choice if c in answers]
             if not valid:
                 return None
-            # If block allows multiple choices, return the list, otherwise return the first
+            # If block allows multiple selections, return the list, otherwise return the first
             return valid if self.multiple_choices else valid[0]
 
         # Stored as a scalar (legacy support)
