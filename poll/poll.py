@@ -21,6 +21,7 @@
 # along with this program in a file in the toplevel directory called
 # "AGPLv3".  If not, see <http://www.gnu.org/licenses/>.
 #
+from abc import ABCmeta, abstractmethod
 from collections import OrderedDict
 import functools
 import json
@@ -216,6 +217,8 @@ class TallyMixin(object):
     """
     Manages allying.
     """
+
+    __metaclass__ = ABCMeta
 
     @abstractmethod
     def clean_tally(self):
