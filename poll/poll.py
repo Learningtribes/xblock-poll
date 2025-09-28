@@ -209,7 +209,7 @@ class CSVExportMixin(object):
         """
         Return a string to be used as the filename for the CSV export.
         """
-        return u"{}-data-export-{}.csv".format(self.display_name.lower(), time.strftime("%Y-%m-%d-%H%M%S", time.gmtime(time.time())))
+        raise NotImplementedError
 
 
 class PollBase(XBlock, ResourceMixin, PublishEventMixin):
@@ -842,6 +842,9 @@ class PollBlock(PollBase, CSVExportMixin):
              """),
         ]
 
+    def get_filename(self):
+        return u"poll-data-export-{}.csv".format(time.strftime("%Y-%m-%d-%H%M%S", time.gmtime(time.time())))
+
     def prepare_data(self):
         header_row = ['user_id', 'username', 'user_email', 'Answer Date', 'question', 'answer']
         data = {}
@@ -1307,6 +1310,9 @@ class SurveyBlock(PollBase, CSVExportMixin):
                  feedback="### Thank you&#10;&#10;for running the tests."/>
              """)
         ]
+
+    def get_filename(self):
+        return u"survey-data-export-{}.csv".format(time.strftime("%Y-%m-%d-%H%M%S", time.gmtime(time.time())))
 
     def prepare_data(self):
         header_row = ['user_id', 'username', 'user_email', 'Answer Date']
