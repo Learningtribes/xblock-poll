@@ -11,7 +11,123 @@ from .poll import PollBase, CSVExportMixin
 from .utils import _
 
 
-class SurveyBlock(PollBase, CSVExportMixin):
+class TallyMixin(object):
+    """
+    Manages Survey XBlock tallying.
+    """
+    tally = Dict(
+        default={
+            'enjoy': {'Y': 0, 'N': 0, 'M': 0}, 'recommend': {'Y': 0, 'N': 0, 'M': 0},
+            'learn': {'Y': 0, 'N': 0, 'M': 0}},
+        scope=Scope.user_state_summary,
+        help=_("Total tally of answers from students.")
+    )
+
+    def clean_tally(self):
+        """
+        Cleans the tally. Scoping prevents us from modifying this in the studio
+        and in the LMS the way we want to without undesirable side effects. So
+        we just clean it up on first access within the LMS, in case the studio
+        has made changes to the answers.
+        """
+        questions = dict(self.questions)
+        answers = dict(self.answers)
+        default_answers = {answer: 0 for answer in answers.keys()}
+        for key in questions.keys():
+            if key not in self.tally:
+                self.tally[key] = dict(default_answers)
+            else:
+                # Answers may have changed, requiring an update for each
+                # question.
+                new_answers = dict(default_answers)
+                new_answers.update(self.tally[key])
+                for existing_key in self.tally[key]:
+                    if existing_key not in default_answers:
+                        del new_answers[existing_key]
+                self.tally[key] = new_answers
+        # Keys for questions that no longer exist can break calculations.
+        for key in self.tally.keys():
+            if key not in questions:
+                del self.tally[key]
+
+    def decrement_tally(self, choices):
+        if not choices:
+            return
+
+        questions = dict(self.questions)
+        answers = dict(self.answers)
+        for key, value in choices.items():
+            if key in questions:
+                if value in answers:
+                    self.tally[key][value] -= 1
+
+    def increment_tally(self, choices):
+        if not choices:
+            return
+
+        for key, value in choices.items():
+            if key in self.tally and value in self.tally[key]:
+                self.tally[key][value] += 1
+
+    def tally_detail(self):
+        """
+        Return a detailed dictionary from the stored tally that the
+        Handlebars template can use.
+        """
+        tally = []
+        questions = OrderedDict(self.markdown_items(self.questions))
+        default_answers = OrderedDict([(answer, 0) for answer, __ in self.answers])
+        choices = self.choices or {}
+        total = 0
+        self.clean_tally()
+        source_tally = self.tally
+
+        # The result should always be the same-- just grab the first one.
+        for key, value in source_tally.items():
+            total = sum(value.values())
+            break
+
+        for key, value in questions.items():
+            # Order matters here.
+            answer_set = OrderedDict(default_answers)
+            answer_set.update(source_tally[key])
+            tally.append({
+                'label': value['label'],
+                'img': value['img'],
+                'img_alt': value.get('img_alt'),
+                'answers': [
+                    {
+                        'count': count, 'choice': False,
+                        'key': answer_key, 'top': False,
+                    }
+                    for answer_key, count in answer_set.items()],
+                'key': key,
+                'choice': False,
+            })
+
+        for question in tally:
+            highest = 0
+            top_index = None
+            for index, answer in enumerate(question['answers']):
+                if answer['key'] == choices.get(question['key']):
+                    answer['choice'] = True
+                # Find the most popular choice.
+                if answer['count'] > highest:
+                    top_index = index
+                    highest = answer['count']
+                try:
+                    answer['percent'] = round(answer['count'] / float(total) * 100)
+                except ZeroDivisionError:
+                    answer['percent'] = 0
+            if top_index is not None:
+                question['answers'][top_index]['top'] = True
+
+        return tally, total
+
+
+@XBlock.wants('settings')
+@XBlock.needs('i18n')
+class SurveyBlock(PollBase, CSVExportMixin, TallyMixin):
     # pylint: disable=too-many-instance-attributes
 
     display_name = String(default=_('Survey'))
@@ -37,13 +153,6 @@ class SurveyBlock(PollBase, CSVExportMixin):
             ('learn', {'label': _('Do you think you will learn a lot?'), 'img': None, 'img_alt': None}),
         ],
         scope=Scope.settings, help=_("Questions for this Survey")
-    )
-    tally = Dict(
-        default={
-            'enjoy': {'Y': 0, 'N': 0, 'M': 0}, 'recommend': {'Y': 0, 'N': 0, 'M': 0},
-            'learn': {'Y': 0, 'N': 0, 'M': 0}},
-        scope=Scope.user_state_summary,
-        help=_("Total tally of answers from students.")
     )
     choices = Dict(help=_("The user's answers"), scope=Scope.user_state)
     event_namespace = 'xblock.survey'
@@ -152,88 +261,6 @@ class SurveyBlock(PollBase, CSVExportMixin):
             context, "public/html/poll_edit.html",
             "/public/css/poll_edit.css", "public/js/poll_edit.js", "SurveyEdit")
 
-    def tally_detail(self):
-        """
-        Return a detailed dictionary from the stored tally that the
-        Handlebars template can use.
-        """
-        tally = []
-        questions = OrderedDict(self.markdown_items(self.questions))
-        default_answers = OrderedDict([(answer, 0) for answer, __ in self.answers])
-        choices = self.choices or {}
-        total = 0
-        self.clean_tally()
-        source_tally = self.tally
-
-        # The result should always be the same-- just grab the first one.
-        for key, value in source_tally.items():
-            total = sum(value.values())
-            break
-
-        for key, value in questions.items():
-            # Order matters here.
-            answer_set = OrderedDict(default_answers)
-            answer_set.update(source_tally[key])
-            tally.append({
-                'label': value['label'],
-                'img': value['img'],
-                'img_alt': value.get('img_alt'),
-                'answers': [
-                    {
-                        'count': count, 'choice': False,
-                        'key': answer_key, 'top': False,
-                    }
-                    for answer_key, count in answer_set.items()],
-                'key': key,
-                'choice': False,
-            })
-
-        for question in tally:
-            highest = 0
-            top_index = None
-            for index, answer in enumerate(question['answers']):
-                if answer['key'] == choices.get(question['key']):
-                    answer['choice'] = True
-                # Find the most popular choice.
-                if answer['count'] > highest:
-                    top_index = index
-                    highest = answer['count']
-                try:
-                    answer['percent'] = round(answer['count'] / float(total) * 100)
-                except ZeroDivisionError:
-                    answer['percent'] = 0
-            if top_index is not None:
-                question['answers'][top_index]['top'] = True
-
-        return tally, total
-
-    def clean_tally(self):
-        """
-        Cleans the tally. Scoping prevents us from modifying this in the studio
-        and in the LMS the way we want to without undesirable side effects. So
-        we just clean it up on first access within the LMS, in case the studio
-        has made changes to the answers.
-        """
-        questions = dict(self.questions)
-        answers = dict(self.answers)
-        default_answers = {answer: 0 for answer in answers.keys()}
-        for key in questions.keys():
-            if key not in self.tally:
-                self.tally[key] = dict(default_answers)
-            else:
-                # Answers may have changed, requiring an update for each
-                # question.
-                new_answers = dict(default_answers)
-                new_answers.update(self.tally[key])
-                for existing_key in self.tally[key]:
-                    if existing_key not in default_answers:
-                        del new_answers[existing_key]
-                self.tally[key] = new_answers
-        # Keys for questions that no longer exist can break calculations.
-        for key in self.tally.keys():
-            if key not in questions:
-                del self.tally[key]
-
     def remove_vote(self):
         """
         If the poll has changed after a user has voted, remove their votes
@@ -245,12 +272,7 @@ class SurveyBlock(PollBase, CSVExportMixin):
         This means a user's old votes may still count indefinitely after a
         change, should they never revisit.
         """
-        questions = dict(self.questions)
-        answers = dict(self.answers)
-        for key, value in self.choices.items():
-            if key in questions:
-                if value in answers:
-                    self.tally[key][value] -= 1
+        self.decrement_tally(self.choices)
         self.choices = None
         self.save()
 
@@ -364,8 +386,7 @@ class SurveyBlock(PollBase, CSVExportMixin):
             self.remove_vote()
         self.choices = data
         self.clean_tally()
-        for key, value in self.choices.items():
-            self.tally[key][value] += 1
+        self.increment_tally(self.choices)
         self.submissions_count += 1
 
         self.send_vote_event({'choices': self.choices})

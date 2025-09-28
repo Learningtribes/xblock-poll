@@ -212,6 +212,127 @@ class CSVExportMixin(object):
         raise NotImplementedError
 
 
+class TallyMixin(object):
+    """
+    Manages Poll XBlocks tallying.
+    """
+
+    tally = Dict(default={'R': 0, 'B': 0, 'G': 0, 'O': 0},
+                 scope=Scope.user_state_summary,
+                 help=_("Total tally of answers from students."))
+    tally_count = Integer(default=0, scope=Scope.user_state_summary, help=_("Total number of votes."))
+
+    def patch_tally_count(self):
+        """
+        Recalculate tally_count from the tally dictionary.
+        """
+        if self.tally_count:
+            return
+        self.tally_count = sum(int(v) for v in self.tally.values())
+
+    def clean_tally(self):
+        """
+        Cleans the tally. Scoping prevents us from modifying this in the studio
+        and in the LMS the way we want to without undesirable side effects. So
+        we just clean it up on first access within the LMS, in case the studio
+        has made changes to the answers.
+        """
+        answers = dict(self.answers)
+        for key in answers:
+            if key not in self.tally:
+                self.tally[key] = 0
+
+        for key in self.tally.keys():
+            if key not in answers:
+                del self.tally[key]
+
+    def decrement_tally(self, choices):
+        if not choices:
+            return
+
+        if not isinstance(choices, (list, tuple)):
+            choices = [choices]
+
+        for choice in choices:
+            if choice in self.tally and self.tally[choice] > 0:
+                self.tally[choice] -= 1
+
+        if self.tally_count > 0:
+            self.tally_count -= 1
+
+    def increment_tally(self, choices):
+        if not choices:
+            return
+
+        if not isinstance(choices, (list, tuple)):
+            choices = [choices]
+
+        for choice in choices:
+            if choice in self.tally:
+                self.tally[choice] += 1
+            else:
+                self.tally[choice] = 1
+
+        self.tally_count += 1
+
+    def tally_detail(self):
+        """
+        Return a detailed dictionary from the stored tally that the
+        Handlebars template can use.
+        """
+        tally = []
+        answers = OrderedDict(self.markdown_items(self.answers))
+        total = 0
+        self.clean_tally()
+        source_tally = self.tally
+        for key, value in answers.items():
+            count = int(source_tally[key])
+            tally.append({
+                'count': count,
+                'answer': value['label'],
+                'img': value['img'],
+                'img_alt': value.get('img_alt'),
+                'key': key,
+                'first': False,
+                'choice': False,
+                'last': False,
+            })
+            total += count
+
+        total = self.tally_count or total
+
+        choice = self.get_choice()
+        for answer in tally:
+            if answer['key'] in choice:
+                answer['choice'] = True
+            try:
+                answer['percent'] = round(answer['count'] / float(total) * 100)
+            except ZeroDivisionError:
+                answer['percent'] = 0
+
+        tally.sort(key=lambda x: x['count'], reverse=True)
+        # This should always be true, but on the off chance there are
+        # no answers...
+        if tally:
+            # Mark the first and last items to make things easier for Handlebars.
+            tally[0]['first'] = True
+            tally[-1]['last'] = True
+        return tally, total
+
+
+class ListOrString(List):
+    """
+    Patch xblock.fields.List to accept either a list or scalar.
+    """
+    def from_json(self, value):
+        if value is None or isinstance(value, list):
+            return value
+        elif isinstance(value, basestring) or isinstance(value, str):
+            return [value]
+        else:
+            raise TypeError('Value stored in a List must be None or a list, found %s' % type(value))
+
+
 class PollBase(XBlock, ResourceMixin, PublishEventMixin):
     """
     Base class for Poll-like XBlocks.
@@ -433,7 +554,7 @@ class PollBase(XBlock, ResourceMixin, PublishEventMixin):
 
 @XBlock.wants('settings')
 @XBlock.needs('i18n')
-class PollBlock(PollBase, CSVExportMixin):
+class PollBlock(PollBase, CSVExportMixin, TallyMixin):
     """
     Poll XBlock. Allows a teacher to poll users, and presents the results so
     far of the poll to the user when finished.
@@ -453,84 +574,11 @@ class PollBlock(PollBase, CSVExportMixin):
         ],
         scope=Scope.settings, help=_("The answer options on this poll.")
     )
-    tally = Dict(default={'R': 0, 'B': 0, 'G': 0, 'O': 0},
-                 scope=Scope.user_state_summary,
-                 help=_("Total tally of answers from students."))
-    tally_count = Integer(default=0, scope=Scope.user_state_summary, help=_("Total number of votes."))
     # For compatibility we support storing either a single choice (string) or
     # multiple choices (list) depending on the `multiple_choices` flag.
     # Default to an empty list (no choice made yet).
-    choice = List(default=[], scope=Scope.user_state, help=_("The student's answer(s)"))
+    choice = ListOrString(default=[], scope=Scope.user_state, help=_("The student's answer(s)"))
     event_namespace = 'xblock.poll'
-
-    def clean_tally(self):
-        """
-        Cleans the tally. Scoping prevents us from modifying this in the studio
-        and in the LMS the way we want to without undesirable side effects. So
-        we just clean it up on first access within the LMS, in case the studio
-        has made changes to the answers.
-        """
-        answers = dict(self.answers)
-        for key in answers:
-            if key not in self.tally:
-                self.tally[key] = 0
-
-        for key in self.tally.keys():
-            if key not in answers:
-                del self.tally[key]
-
-    def tally_detail(self):
-        """
-        Return a detailed dictionary from the stored tally that the
-        Handlebars template can use.
-        """
-        tally = []
-        answers = OrderedDict(self.markdown_items(self.answers))
-        choice = self.get_choice()
-        total = 0
-        self.clean_tally()
-        source_tally = self.tally
-        for key, value in answers.items():
-            count = int(source_tally[key])
-            tally.append({
-                'count': count,
-                'answer': value['label'],
-                'img': value['img'],
-                'img_alt': value.get('img_alt'),
-                'key': key,
-                'first': False,
-                'choice': False,
-                'last': False,
-            })
-            total += count
-
-        total = self.tally_count or total
-
-        # choice may be None, a scalar, or a list of keys (when multiple_choices)
-        for answer in tally:
-            try:
-                if isinstance(choice, (list, tuple)):
-                    if answer['key'] in choice:
-                        answer['choice'] = True
-                else:
-                    if answer['key'] == choice:
-                        answer['choice'] = True
-            except Exception:
-                # In case of unexpected types, leave choice False
-                pass
-            try:
-                answer['percent'] = round(answer['count'] / float(total) * 100)
-            except ZeroDivisionError:
-                answer['percent'] = 0
-
-        tally.sort(key=lambda x: x['count'], reverse=True)
-        # This should always be true, but on the off chance there are
-        # no answers...
-        if tally:
-            # Mark the first and last items to make things easier for Handlebars.
-            tally[0]['first'] = True
-            tally[-1]['last'] = True
-        return tally, total
 
     def get_choice(self):
         """
@@ -540,22 +588,20 @@ class PollBlock(PollBase, CSVExportMixin):
         """
         answers = dict(self.answers)
         # No choice made
-        if not self.choice:
-            return None
+        choice = self.choice
+        if not choice:
+            return []
 
         # If stored as a list/tuple, filter invalid keys
-        if isinstance(self.choice, (list, tuple)):
-            valid = [c for c in self.choice if c in answers]
-            if not valid:
-                return None
-            # If block allows multiple selections, return the list, otherwise return the first
-            return valid if self.multiple_choices else valid[0]
+        if isinstance(choice, (list, tuple)):
+            valid = [c for c in choice if c in answers]
+            return valid or []
 
         # Stored as a scalar (legacy support)
-        if self.choice in answers:
-            return [self.choice] if self.multiple_choices else self.choice
+        if choice in answers:
+            return [choice]
 
-        return None
+        return []
 
     def author_view(self, context=None):
         """
@@ -596,7 +642,7 @@ class PollBlock(PollBase, CSVExportMixin):
             'block_id': self._get_block_id(),
         })
 
-        if self.choice:
+        if choice:
             detail, total = self.tally_detail()
             context.update({'tally': detail, 'total': total, 'plural': total > 1})
 
@@ -685,14 +731,6 @@ class PollBlock(PollBase, CSVExportMixin):
             'block_id': self._get_block_id(),
         }
 
-    def patch_tally_count(self):
-        """
-        Recalculate tally_count from the tally dictionary.
-        """
-        if self.tally_count:
-            return
-        self.tally_count = sum(int(v) for v in self.tally.values())
-
     @XBlock.json_handler
     def vote(self, data, suffix=''):
         """
@@ -700,7 +738,7 @@ class PollBlock(PollBase, CSVExportMixin):
         """
         result = {'success': False, 'errors': []}
         old_choice = self.get_choice()
-        if (old_choice is not None) and not self.private_results:
+        if old_choice and not self.private_results:
             result['errors'].append(self.ugettext('You have already voted in this poll.'))
             return result
         try:
@@ -710,26 +748,12 @@ class PollBlock(PollBase, CSVExportMixin):
             return result
         answers_dict = OrderedDict(self.answers)
 
-        # Normalize incoming choice(s) depending on multiple_choices flag
-        if self.multiple_choices:
-            # Accept a single string or a list of strings
-            incoming = list(choice) if isinstance(choice, (list, tuple)) else [choice]
-        else:
-            # Single choice expected; if list provided, take first
-            if isinstance(choice, (list, tuple)):
-                incoming = choice[0] if choice else None
-            else:
-                incoming = choice
+        incoming = list(choice) if isinstance(choice, (list, tuple)) else [choice]
 
-        # Validate incoming keys
         try:
-            if self.multiple_choices:
-                for c in incoming:
-                    if c not in answers_dict:
-                        raise KeyError(c)
-            else:
-                if incoming not in answers_dict:
-                    raise KeyError(incoming)
+            for c in incoming:
+                if c not in answers_dict:
+                    raise KeyError(c)
         except KeyError as err:
             result['errors'].append(
                 self.ugettext(
@@ -741,7 +765,7 @@ class PollBlock(PollBase, CSVExportMixin):
 
         self.patch_tally_count()
 
-        if old_choice is None:
+        if not old_choice:
             # Reset submissions count if old choice is bogus.
             self.submissions_count = 0
 
@@ -749,28 +773,11 @@ class PollBlock(PollBase, CSVExportMixin):
             result['errors'].append(self.ugettext('You have already voted as many times as you are allowed.'))
             return result
 
-        # Record the vote(s)
         self.clean_tally()
-        # Decrement old choices
-        if old_choice is not None:
-            if isinstance(old_choice, (list, tuple)):
-                for oc in old_choice:
-                    self.tally[oc] -= 1
-            else:
-                self.tally[old_choice] -= 1
-            if self.tally_count:
-                self.tally_count -= 1
+        self.decrement_tally(old_choice)
+        self.increment_tally(incoming)
 
-        # Set and increment new choice(s)
-        if self.multiple_choices:
-            self.choice = list(incoming)
-            for nc in self.choice:
-                self.tally[nc] += 1
-        else:
-            self.choice = incoming
-            self.tally[incoming] += 1
-
-        self.tally_count += 1
+        self.choice = incoming
         self.submissions_count += 1
 
         result['success'] = True
@@ -778,11 +785,7 @@ class PollBlock(PollBase, CSVExportMixin):
         result['submissions_count'] = self.submissions_count
         result['max_submissions'] = self.max_submissions
 
-        # Publish event with appropriate payload key
-        if self.multiple_choices:
-            self.send_vote_event({'choices': self.choice})
-        else:
-            self.send_vote_event({'choice': self.choice})
+        self.send_vote_event({'choices': self.get_choice()})
 
         return result
 
@@ -822,7 +825,7 @@ class PollBlock(PollBase, CSVExportMixin):
     @XBlock.json_handler
     def student_voted(self, data, suffix=''):
         return {
-            'voted': self.get_choice() is not None,
+            'voted': bool(self.get_choice()),
             'private_results': self.private_results
         }
 
