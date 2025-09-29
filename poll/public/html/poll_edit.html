@@ -55,19 +55,25 @@
         <li class="field comp-setting-entry is-set">
             <div class="wrapper-comp-setting">
                 <label class="label setting-label poll-setting-label" for="poll-private-results">{% trans 'Private Results' %}</label>
-                <select id="poll-private-results" class="input setting-input" name="private_results"
-                        aria-describedby="poll-private-results-help">
-                    <!-- So far as I can see, there's not a proper style for checkboxes. LTI module does it this way. -->
-                    <option value="true" {% if private_results %} selected{% endif %}>{% trans 'True' %}</option>
-                    <option value="false" {% if not private_results %} selected{% endif %}>{% trans 'False' %}</option>
-                </select>
-                <span class="switcher-wrapper"></span>
-                <span class="question-mark-wrapper" data-title="{% trans "If this is set to True, don't display results of the poll to the user." %}"></span>
+                <input type="checkbox" id="poll-private-results" name="private_results" class="ds-switch" {% if private_results %}checked{% endif %} />
+                <span class="icon-question question-mark-wrapper">
+                    <i class="fas fa-info-circle"></i>
+                    <ds-tooltip role="tooltip">{% trans "When enabled, results are hidden from users" %}</ds-tooltip>
+                </span>
             </div>
-            <span class="tip setting-help" id="poll-private-results-help">
-                {% trans "If this is set to True, don't display results of the poll to the user." %}
-            </span>
         </li>
+        {% if not multiquestion %}
+        <li class="field comp-setting-entry is-set">
+            <div class="wrapper-comp-setting">
+                <label class="label setting-label poll-setting-label" for="poll-multiple-choices">{% trans "Allow multiple selections" %}</label>
+                <input type="checkbox" id="poll-multiple-choices" name="multiple_choices" class="ds-switch" {% if multiple_choices %}checked{% endif %} />
+                <span class="icon-question question-mark-wrapper">
+                    <i class="fas fa-info-circle"></i>
+                    <ds-tooltip role="tooltip">{% trans "When enabled, allow users to select multiple answers" %}</ds-tooltip>
+                </span>
+            </div>
+        </li>
+        {% endif %}
         <li class="field comp-setting-entry is-set">
             <div class="wrapper-comp-setting">
                 <label class="label setting-label poll-setting-label" for="poll-max-submissions">{% trans 'Maximum Submissions' %}</label>

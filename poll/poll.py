@@ -220,6 +220,7 @@ class PollBase(XBlock, ResourceMixin, PublishEventMixin):
 
     event_namespace = 'xblock.pollbase'
     private_results = Boolean(default=False, help=_("Whether or not to display results to the user."))
+    multiple_choices = Boolean(default=False, help=_("Whether or not to allow multiple selections."))
     max_submissions = Integer(default=1, help=_("The maximum number of times a user may send a submission."))
     submissions_count = Integer(
         default=0, help=_("Number of times the user has sent a submission."), scope=Scope.user_state
@@ -249,8 +250,11 @@ class PollBase(XBlock, ResourceMixin, PublishEventMixin):
         """
         Convert all items' labels into markdown.
         """
-        return [(key, {'label': markdown(value['label']), 'img': value['img'], 'img_alt': value.get('img_alt')})
-                for key, value in items]
+        return [(key, {
+            'label': markdown(value['label']),
+            'img': value['img'],
+            'img_alt': value.get('img_alt')
+        }) for key, value in items]
 
     def _get_block_id(self):
         """
@@ -430,6 +434,18 @@ class PollBase(XBlock, ResourceMixin, PublishEventMixin):
         return cls.json_handler(func)
 
 
+class ListOrString(List):
+    """
+    Patch xblock.fields.List to accept either a list or scalar.
+    """
+    def from_json(self, value):
+        if value is None or isinstance(value, list):
+            return value
+        elif isinstance(value, basestring) or isinstance(value, str):
+            return [value]
+        else:
+            raise TypeError('Value stored in a List must be None or a list, found %s' % type(value))
+
 @XBlock.wants('settings')
 @XBlock.needs('i18n')
 class PollBlock(PollBase, CSVExportMixin):
@@ -455,7 +471,11 @@ class PollBlock(PollBase, CSVExportMixin):
     tally = Dict(default={'R': 0, 'B': 0, 'G': 0, 'O': 0},
                  scope=Scope.user_state_summary,
                  help=_("Total tally of answers from students."))
-    choice = String(scope=Scope.user_state, help=_("The student's answer"))
+    tally_count = Integer(default=0, scope=Scope.user_state_summary, help=_("Total number of votes."))
+    # For compatibility we support storing either a single choice (string) or
+    # multiple choices (list) depending on the `multiple_choices` flag.
+    # Default to an empty list (no choice made yet).
+    choice = ListOrString(default=[], scope=Scope.user_state, help=_("The student's answer(s)"))
     event_namespace = 'xblock.poll'
 
     def clean_tally(self):
@@ -474,6 +494,35 @@ class PollBlock(PollBase, CSVExportMixin):
             if key not in answers:
                 del self.tally[key]
 
+    def decrement_tally(self, choices):
+        if not choices:
+            return
+
+        if not isinstance(choices, (list, tuple)):
+            choices = [choices]
+
+        for choice in choices:
+            if choice in self.tally and self.tally[choice] > 0:
+                self.tally[choice] -= 1
+
+        if self.tally_count > 0:
+            self.tally_count -= 1
+
+    def increment_tally(self, choices):
+        if not choices:
+            return
+
+        if not isinstance(choices, (list, tuple)):
+            choices = [choices]
+
+        for choice in choices:
+            if choice in self.tally:
+                self.tally[choice] += 1
+            else:
+                self.tally[choice] = 1
+
+        self.tally_count += 1
+
     def tally_detail(self):
         """
         Return a detailed dictionary from the stored tally that the
@@ -481,7 +530,6 @@ class PollBlock(PollBase, CSVExportMixin):
         """
         tally = []
         answers = OrderedDict(self.markdown_items(self.answers))
-        choice = self.get_choice()
         total = 0
         self.clean_tally()
         source_tally = self.tally
@@ -499,8 +547,11 @@ class PollBlock(PollBase, CSVExportMixin):
             })
             total += count
 
+        total = self.tally_count or total
+
+        choice = self.get_choice()
         for answer in tally:
-            if answer['key'] == choice:
+            if answer['key'] in choice:
                 answer['choice'] = True
             try:
                 answer['percent'] = round(answer['count'] / float(total) * 100)
@@ -522,10 +573,18 @@ class PollBlock(PollBase, CSVExportMixin):
         the student answered the poll. We don't want to take away
         the user's progress, but they should be able to vote again.
         """
-        if self.choice and self.choice in dict(self.answers):
-            return self.choice
+        answers = dict(self.answers)
 
-        return None
+        # If stored as a list/tuple, filter invalid keys
+        if isinstance(self.choice, (list, tuple)):
+            valid = [c for c in self.choice if c in answers]
+            return valid or []
+
+        # Stored as a scalar (legacy support)
+        if self.choice in answers:
+            return [self.choice]
+
+        return []
 
     def author_view(self, context=None):
         """
@@ -552,6 +611,7 @@ class PollBlock(PollBase, CSVExportMixin):
             'answers': self.markdown_items(self.answers),
             'question': markdown(self.question),
             'private_results': self.private_results,
+            'multiple_choices': self.multiple_choices,
             # Mustache is treating an empty string as true.
             'feedback': markdown(self.feedback) or False,
             'js_template': js_template,
@@ -565,7 +625,7 @@ class PollBlock(PollBase, CSVExportMixin):
             'block_id': self._get_block_id(),
         })
 
-        if self.choice:
+        if choice:
             detail, total = self.tally_detail()
             context.update({'tally': detail, 'total': total, 'plural': total > 1})
 
@@ -583,6 +643,7 @@ class PollBlock(PollBase, CSVExportMixin):
             'answers': self.answers,
             'max_submissions': self.max_submissions,
             'private_results': self.private_results,
+            'multiple_choices': self.multiple_choices,
             'feedback': self.feedback,
         }
 
@@ -594,6 +655,7 @@ class PollBlock(PollBase, CSVExportMixin):
         response = {
             'choice': self.get_choice(),
             'tally': self.tally,
+            'tally_count': self.tally_count,
             'submissions_count': self.submissions_count,
         }
 
@@ -612,6 +674,7 @@ class PollBlock(PollBase, CSVExportMixin):
             'question': self.question,
             'display_name': self.display_name,
             'private_results': self.private_results,
+            'multiple_choices': self.multiple_choices,
             'feedback': self.feedback,
             'js_template': js_template,
             'max_submissions': self.max_submissions,
@@ -651,6 +714,14 @@ class PollBlock(PollBase, CSVExportMixin):
             'block_id': self._get_block_id(),
         }
 
+    def patch_tally_count(self):
+        """
+        Recalculate tally_count from the tally dictionary.
+        """
+        if self.tally_count:
+            return
+        self.tally_count = sum(int(v) for v in self.tally.values())
+
     @XBlock.json_handler
     def vote(self, data, suffix=''):
         """
@@ -658,7 +729,7 @@ class PollBlock(PollBase, CSVExportMixin):
         """
         result = {'success': False, 'errors': []}
         old_choice = self.get_choice()
-        if (old_choice is not None) and not self.private_results:
+        if old_choice and not self.private_results:
             result['errors'].append(self.ugettext('You have already voted in this poll.'))
             return result
         try:
@@ -666,18 +737,26 @@ class PollBlock(PollBase, CSVExportMixin):
         except KeyError:
             result['errors'].append(self.ugettext('Answer not included with request.'))
             return result
-        # Just to show data coming in...
+        answers_dict = OrderedDict(self.answers)
+
+        incoming = list(choice) if isinstance(choice, (list, tuple)) else [choice]
+
         try:
-            OrderedDict(self.answers)[choice]
-        except KeyError:
+            for c in incoming:
+                if c not in answers_dict:
+                    raise KeyError(c)
+        except KeyError as err:
             result['errors'].append(
                 self.ugettext(
                     # Translators: {choice} uniquely identifies a specific answer belonging to a poll or survey.
                     'No key "{choice}" in answers table.'
-                ).format(choice=choice))
+                ).format(choice=err)
+            )
             return result
 
-        if old_choice is None:
+        self.patch_tally_count()
+
+        if not old_choice:
             # Reset submissions count if old choice is bogus.
             self.submissions_count = 0
 
@@ -686,10 +765,10 @@ class PollBlock(PollBase, CSVExportMixin):
             return result
 
         self.clean_tally()
-        if old_choice is not None:
-            self.tally[old_choice] -= 1
-        self.choice = choice
-        self.tally[choice] += 1
+        self.decrement_tally(old_choice)
+        self.increment_tally(incoming)
+
+        self.choice = incoming
         self.submissions_count += 1
 
         result['success'] = True
@@ -697,7 +776,7 @@ class PollBlock(PollBase, CSVExportMixin):
         result['submissions_count'] = self.submissions_count
         result['max_submissions'] = self.max_submissions
 
-        self.send_vote_event({'choice': self.choice})
+        self.send_vote_event({'choices': self.get_choice()})
 
         return result
 
@@ -707,6 +786,7 @@ class PollBlock(PollBase, CSVExportMixin):
         question = data.get('question', '').strip()
         feedback = data.get('feedback', '').strip()
         private_results = bool(data.get('private_results', False))
+        multiple_choices = bool(data.get('multiple_choices', False))
 
         max_submissions = self.get_max_submissions(self.ugettext, data, result, private_results)
 
@@ -724,6 +804,7 @@ class PollBlock(PollBase, CSVExportMixin):
         self.question = question
         self.feedback = feedback
         self.private_results = private_results
+        self.multiple_choices = multiple_choices
         self.display_name = display_name
         self.max_submissions = max_submissions
 
@@ -735,7 +816,7 @@ class PollBlock(PollBase, CSVExportMixin):
     @XBlock.json_handler
     def student_voted(self, data, suffix=''):
         return {
-            'voted': self.get_choice() is not None,
+            'voted': bool(self.get_choice()),
             'private_results': self.private_results
         }
 
@@ -769,7 +850,13 @@ class PollBlock(PollBase, CSVExportMixin):
         data = {}
         answers_dict = dict(self.answers)
         for sm in self.student_module_queryset():
-            choice = json.loads(sm.state)['choice']
+            raw_state = json.loads(sm.state)
+            choice = raw_state.get('choice')
+
+            if isinstance(choice, (list, tuple)):
+                answer_label = '; '.join([answers_dict.get(c, {}).get('label', str(c)) for c in choice])
+            else:
+                answer_label = answers_dict.get(choice, {}).get('label', str(choice))
             if sm.student.id not in data:
                 data[sm.student.id] = [
                     sm.student.id,
@@ -777,7 +864,7 @@ class PollBlock(PollBase, CSVExportMixin):
                     sm.student.email,
                     sm.modified.strftime("%Y-%m-%d %H:%M:%S"),
                     self.question,
-                    answers_dict[choice]['label'],
+                    answer_label,
                 ]
         return [header_row] + data.values()
 
@@ -818,6 +905,7 @@ class SurveyBlock(PollBase, CSVExportMixin):
         scope=Scope.user_state_summary,
         help=_("Total tally of answers from students.")
     )
+
     choices = Dict(help=_("The user's answers"), scope=Scope.user_state)
     event_namespace = 'xblock.survey'
 
@@ -925,6 +1013,25 @@ class SurveyBlock(PollBase, CSVExportMixin):
             context, "public/html/poll_edit.html",
             "/public/css/poll_edit.css", "public/js/poll_edit.js", "SurveyEdit")
 
+    def decrement_tally(self, choices):
+        if not choices:
+            return
+
+        questions = dict(self.questions)
+        answers = dict(self.answers)
+        for key, value in choices.items():
+            if key in questions:
+                if value in answers:
+                    self.tally[key][value] -= 1
+
+    def increment_tally(self, choices):
+        if not choices:
+            return
+
+        for key, value in choices.items():
+            if key in self.tally and value in self.tally[key]:
+                self.tally[key][value] += 1
+
     def tally_detail(self):
         """
         Return a detailed dictionary from the stored tally that the
@@ -1018,12 +1125,7 @@ class SurveyBlock(PollBase, CSVExportMixin):
         This means a user's old votes may still count indefinitely after a
         change, should they never revisit.
         """
-        questions = dict(self.questions)
-        answers = dict(self.answers)
-        for key, value in self.choices.items():
-            if key in questions:
-                if value in answers:
-                    self.tally[key][value] -= 1
+        self.decrement_tally(self.choices)
         self.choices = None
         self.save()
 
@@ -1137,8 +1239,7 @@ class SurveyBlock(PollBase, CSVExportMixin):
             self.remove_vote()
         self.choices = data
         self.clean_tally()
-        for key, value in self.choices.items():
-            self.tally[key][value] += 1
+        self.increment_tally(self.choices)
         self.submissions_count += 1
 
         self.send_vote_event({'choices': self.choices})

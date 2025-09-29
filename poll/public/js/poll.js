@@ -19,49 +19,42 @@ function PollUtil (runtime, element, pollType) {
         this.resultsTemplate = Handlebars.compile($("." + pollType + "-results-template", element).html());
 
         this.viewResultsButton = $('.view-results-button', element);
-        this.viewResultsButton.click(this.getResults);
+        this.viewResultsButton.on('click', this.getResults);
 
         this.exportResultsButton = $('.export-results-button', element);
-        this.exportResultsButton.click(this.exportCsv);
+        this.exportResultsButton.on('click', this.exportCsv);
 
         this.downloadResultsButton = $('.download-results-button', element);
-        this.downloadResultsButton.click(this.downloadCsv);
+        this.downloadResultsButton.on('click', this.downloadCsv);
 
         return this.shouldDisplayResults();
     };
 
     this.pollInit = function(){
         // Initialization function for PollBlocks.
-        var selector = 'input[name=choice]:checked';
-        var radio = $(selector, element);
-        self.submit.click(function () {
+        self.submit.on('click', function () {
             // Disable the submit button to avoid multiple clicks
             self.disableSubmit();
-            // We can't just use radio.selector here because the selector
-            // is mangled if this is the first time this XBlock is added in
-            // studio.
-            radio = $(selector, element);
-            var choice = radio.val();
-            var thanks = $('.poll-voting-thanks', element);
-            thanks.addClass('poll-hidden');
-            // JQuery's fade functions set element-level styles. Clear these.
-            thanks.removeAttr('style');
+            const $thanks = element.querySelector('.poll-voting-thanks')
+            $thanks?.classList.add('poll-hidden')
+            $thanks?.removeAttribute('style')
+
+            const choice = Array.from(document.querySelectorAll('input[name="choice"]:checked')).map((el) => el.value)
             $.ajax({
                 type: "POST",
                 url: self.voteUrl,
-                data: JSON.stringify({"choice": choice}),
+                data: JSON.stringify({choice}),
                 success: self.onSubmit
             });
         });
         // If the user has already reached their maximum submissions, all inputs should be disabled.
         if (!$('div.poll-block', element).data('can-vote')) {
-            $('input', element).attr('disabled', true);
+            element.querySelectorAll('input').forEach(el => el.setAttribute('disabled', true))
         }
         // If the user has refreshed the page, they may still have an answer
         // selected and the submit button should be enabled.
-        var answers = $('input[type=radio]', element);
-        if (! radio.val()) {
-            answers.bind("change.enableSubmit", self.enableSubmit);
+        if (!$('input[name="choice"]:checked', element).val()) {
+            $('input[name="choice"]', element).on("change", self.enableSubmit);
         } else if ($('div.poll-block', element).data('can-vote')) {
             self.enableSubmit();
         }
@@ -75,8 +68,8 @@ function PollUtil (runtime, element, pollType) {
             $('input', element).attr('disabled', true);
             return
         }
-        self.answers.bind("change.enableSubmit", self.verifyAll);
-        self.submit.click(function () {
+        self.answers.on("change", self.verifyAll);
+        self.submit.on('click', function () {
             // Disable the submit button to avoid multiple clicks
             self.disableSubmit();
             $.ajax({
@@ -250,7 +243,7 @@ function PollUtil (runtime, element, pollType) {
     this.enableSubmit = function () {
         // Enable the submit button.
         self.submit.removeAttr("disabled");
-        self.answers.unbind("change.enableSubmit");
+        self.answers.off("change");
     };
 
     var init_map = {'poll': self.pollInit, 'survey': self.surveyInit};

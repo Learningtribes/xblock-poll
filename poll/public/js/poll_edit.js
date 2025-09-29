@@ -75,31 +75,6 @@ function PollEditUtil(runtime, element, pollType) {
             }
             load(mapping[task]);
         }
-
-        if (LearningTribes && LearningTribes.QuestionMark) {
-            $wrappers = $('.wrapper-comp-settings .question-mark-wrapper')
-            $wrappers.each(function(i, wrapper){
-                new LearningTribes.QuestionMark(wrapper)
-            })
-        }
-
-        function renderSwithcher(wrapper) {
-            var $select = $(wrapper).prev();
-            new LearningTribes.Switcher(wrapper, $select.find('option:selected').val() === 'true' ? 'true' : 'false',
-                function(checked){
-                var checkedStr = checked ? 'true' : 'false';
-                $select.find('option').removeAttr('selected')
-                $select.find('option[value='+checkedStr+']')
-                    .attr('selected', 'selected')
-                }
-            )
-        }
-        if (LearningTribes && LearningTribes.Switcher) {
-            var $wrappers = $('.wrapper-comp-settings').find('.switcher-wrapper');
-            $wrappers.each(function(i, wrapper){
-                renderSwithcher(wrapper)
-            })
-        }
     };
 
     this.scrollTo = function (item){
@@ -263,7 +238,10 @@ function PollEditUtil(runtime, element, pollType) {
         data['feedback'] = $('#poll-feedback-editor', element).val();
         data['max_submissions'] = $('#poll-max-submissions', element).val();
         // Convert to boolean for transfer.
-        data['private_results'] = eval($('#poll-private-results', element).val());
+        data['private_results'] = document.getElementById('poll-private-results').checked
+        if (document.getElementById('poll-multiple-choices')) {
+            data['multiple_choices'] = document.getElementById('poll-multiple-choices').checked
+        }
 
         if (notify) {
             runtime.notify('save', {state: 'start', message: gettext("Saving")});
@@ -274,10 +252,11 @@ function PollEditUtil(runtime, element, pollType) {
             data: JSON.stringify(data),
             // There are issues with using proper status codes at the moment.
             // So we pass along a 'success' key for now.
-            success: function(result) {
-                if (result['success'] && notify) {
+            success (result) {
+                if (!notify) return
+                if (result['success']) {
                     runtime.notify('save', {state: 'end'})
-                } else if (notify) {
+                } else {
                     runtime.notify('error', {
                         'title': 'Error saving poll',
                         'message': self.format_errors(result['errors'])
