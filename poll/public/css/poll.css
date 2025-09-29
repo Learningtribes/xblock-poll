@@ -8,11 +8,8 @@
 }
 
 .poll-answer-text {
-    margin-bottom: 0;
-    font-weight: bold;
     vertical-align: middle;
     display: table-cell;
-    padding-left: .5em;
 }
 
 .percentage-gauge {
@@ -22,10 +19,6 @@
     top: 0;
     left: 0;
     height: 100%;
-}
-
-.poll-input-container input[type="radio"] {
-    margin: 0;
 }
 
 .percentage-gauge-background {
@@ -247,12 +240,6 @@ th.survey-answer {
     padding: 0;
 }
 
-/* Keep the paragraph spacing, but make the spacing vertically even. */
-.poll-answer label.poll-answer-text p {
-    margin-bottom: .5em;
-    margin-top: .5em;
-}
-
 .poll-voting-thanks span {
     margin-top: .25em;
     margin-bottom: .25em;
@@ -282,10 +269,6 @@ th.survey-answer {
 
 .poll-input-container {
     display: table-cell;
-    vertical-align: middle;
-    height: 100%;
-    padding-right: .5em;
-    width: 5%;
 }
 
 .visible-mobile-only{
@@ -371,12 +354,6 @@ th.survey-answer {
 }
 
  /*RTL specified CSS for polls & survey*/
-
-.rtl .poll-input-container, .rtl .poll-answer-text{
-    padding-left: .5em;
-    padding-right: 0;
-}
-
 .rtl .poll-answer-label{
     margin-left: 0;
     padding-left: 0;

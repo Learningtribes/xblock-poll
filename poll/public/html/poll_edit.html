@@ -62,6 +62,7 @@
                 </span>
             </div>
         </li>
+        {% if not multiquestion %}
         <li class="field comp-setting-entry is-set">
             <div class="wrapper-comp-setting">
                 <label class="label setting-label poll-setting-label" for="poll-multiple-choices">{% trans "Allow multiple selections" %}</label>
@@ -72,6 +73,7 @@
                 </span>
             </div>
         </li>
+        {% endif %}
         <li class="field comp-setting-entry is-set">
             <div class="wrapper-comp-setting">
                 <label class="label setting-label poll-setting-label" for="poll-max-submissions">{% trans 'Maximum Submissions' %}</label>
