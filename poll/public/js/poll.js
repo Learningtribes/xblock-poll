@@ -39,7 +39,7 @@ function PollUtil (runtime, element, pollType) {
             $thanks?.classList.add('poll-hidden')
             $thanks?.removeAttribute('style')
 
-            const choice = Array.from(document.querySelectorAll('input[name="choice"]:checked')).map((el) => el.value)
+            const choice = Array.from(element.querySelectorAll('input[name="choice"]:checked')).map((el) => el.value)
             $.ajax({
                 type: "POST",
                 url: self.voteUrl,
