@@ -238,9 +238,9 @@ function PollEditUtil(runtime, element, pollType) {
         data['feedback'] = $('#poll-feedback-editor', element).val();
         data['max_submissions'] = $('#poll-max-submissions', element).val();
         // Convert to boolean for transfer.
-        data['private_results'] = element.getElementById('poll-private-results').checked
-        if (element.getElementById('poll-multiple-choices')) {
-            data['multiple_choices'] = element.getElementById('poll-multiple-choices').checked
+        data['private_results'] = $('#poll-private-results', element).prop('checked');
+        if ($('#poll-multiple-choices', element).length) {
+            data['multiple_choices'] = $('#poll-multiple-choices', element).prop('checked');
         }
 
         if (notify) {
