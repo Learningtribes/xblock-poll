@@ -1,9 +1,13 @@
 language: python
+dist: xenial
 python:
-    - "2.7"
+  - "2.7"
+  - "3.6"
+services:
+  - xvfb
 before_install:
-    - "export DISPLAY=:99"
-    - "sh -e /etc/init.d/xvfb start"
+  - pip install -U pip
+  - export BOTO_CONFIG=/dev/null
 install:
   - make requirements
 script:

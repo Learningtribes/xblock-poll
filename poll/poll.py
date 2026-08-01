@@ -21,13 +21,16 @@
 # along with this program in a file in the toplevel directory called
 # "AGPLv3".  If not, see <http://www.gnu.org/licenses/>.
 #
+from __future__ import absolute_import
+
 from collections import OrderedDict
 import functools
 import json
 import time
 
-from markdown import markdown
 import pkg_resources
+import six
+from markdown import markdown
 from webob import Response
 
 from django import utils
@@ -132,8 +135,8 @@ class CSVExportMixin(object):
 
         # Make sure we nail down our state before sending off an asynchronous task.
         async_result = export_csv_data.delay(
-            unicode(getattr(self.scope_ids, 'usage_id', None)),
-            unicode(getattr(self.runtime, 'course_id', 'course_id')),
+            six.text_type(getattr(self.scope_ids, 'usage_id', None)),
+            six.text_type(getattr(self.runtime, 'course_id', 'course_id')),
         )
         if not async_result.ready():
             self.active_export_task_id = async_result.id
@@ -197,7 +200,7 @@ class CSVExportMixin(object):
             else:
                 self.last_export_result = {'error': u'Unexpected result: {}'.format(repr(task_result.result))}
         else:
-            self.last_export_result = {'error': unicode(task_result.result)}
+            self.last_export_result = {'error': six.text_type(task_result.result)}
 
     def prepare_data(self):
         """
@@ -267,7 +270,7 @@ class PollBase(XBlock, ResourceMixin, PublishEventMixin):
         if hasattr(self, 'location'):
             return self.location.html_id()  # pylint: disable=no-member
 
-        return unicode(self.scope_ids.usage_id)
+        return six.text_type(self.scope_ids.usage_id)
 
     def img_alt_mandatory(self):
         """
@@ -441,10 +444,11 @@ class ListOrString(List):
     def from_json(self, value):
         if value is None or isinstance(value, list):
             return value
-        elif isinstance(value, basestring) or isinstance(value, str):
+        elif isinstance(value, six.string_types):
             return [value]
         else:
             raise TypeError('Value stored in a List must be None or a list, found %s' % type(value))
+
 
 @XBlock.wants('settings')
 @XBlock.needs('i18n')
@@ -490,7 +494,7 @@ class PollBlock(PollBase, CSVExportMixin):
             if key not in self.tally:
                 self.tally[key] = 0
 
-        for key in self.tally.keys():
+        for key in list(self.tally):
             if key not in answers:
                 del self.tally[key]
 
@@ -866,7 +870,7 @@ class PollBlock(PollBase, CSVExportMixin):
                     self.question,
                     answer_label,
                 ]
-        return [header_row] + data.values()
+        return [header_row] + list(data.values())
 
 
 @XBlock.wants('settings')
@@ -1110,7 +1114,7 @@ class SurveyBlock(PollBase, CSVExportMixin):
                         del new_answers[existing_key]
                 self.tally[key] = new_answers
         # Keys for questions that no longer exist can break calculations.
-        for key in self.tally.keys():
+        for key in list(self.tally):
             if key not in questions:
                 del self.tally[key]
 
@@ -1338,4 +1342,4 @@ class SurveyBlock(PollBase, CSVExportMixin):
                         else:
                             row.append(answers_dict[choice])
                 data[sm.student.id] = row
-        return [header_row + questions] + data.values()
+        return [header_row + questions] + list(data.values())

@@ -1,9 +1,13 @@
+from __future__ import absolute_import
+
 import unittest
 import json
+from datetime import datetime
 
+from mock import Mock, patch
 from xblock.field_data import DictFieldData
 
-from poll.poll import PollBlock, SurveyBlock
+from poll.poll import ListOrString, PollBlock, SurveyBlock
 from ..utils import MockRuntime, make_request
 
 
@@ -46,6 +50,7 @@ class TestPollBlock(unittest.TestCase):
             'answers': self.poll_data['answers'],
             'max_submissions': self.poll_data['max_submissions'],
             'private_results': self.poll_data['private_results'],
+            'multiple_choices': False,
             'feedback': self.poll_data['feedback'],
         }
 
@@ -60,14 +65,39 @@ class TestPollBlock(unittest.TestCase):
             self.poll_block.handle(
                 'student_view_user_state',
                 make_request('', method='GET')
-            ).body
+            ).body.decode('utf-8')
         )
         expected_response = {
-            u'choice': None,
+            u'choice': [],
             u'submissions_count': 5,
             u'tally': {'R': 0, 'B': 0, 'G': 0, 'O': 0},
+            u'tally_count': 0,
         }
         self.assertEqual(response, expected_response)
+
+    def test_list_or_string_accepts_text(self):
+        """Legacy scalar choices remain readable on Python 2 and Python 3."""
+        self.assertEqual(['R'], ListOrString().from_json('R'))
+
+    def test_clean_tally_removes_unknown_answers(self):
+        """Cleaning a tally may delete keys while iterating on Python 3."""
+        self.poll_block.tally = {'R': 1, 'removed': 2}
+        self.poll_block.clean_tally()
+        self.assertEqual({'R': 1, 'B': 0, 'G': 0, 'O': 0}, self.poll_block.tally)
+
+    def test_prepare_data_returns_list(self):
+        """CSV export rows are a concrete list rather than a Python 3 view."""
+        student = Mock(id=1, username='student', email='student@example.com')
+        state = Mock(
+            student=student,
+            state='{"choice": ["R"]}',
+            modified=datetime(2020, 1, 2, 3, 4, 5),
+        )
+        with patch.object(self.poll_block, 'student_module_queryset', return_value=[state]):
+            rows = self.poll_block.prepare_data()
+
+        self.assertIsInstance(rows, list)
+        self.assertEqual(rows[1][-1], 'Red')
 
 
 class TestSurveyBlock(unittest.TestCase):

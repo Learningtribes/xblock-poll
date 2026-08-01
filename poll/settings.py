@@ -7,6 +7,8 @@ https://docs.djangoproject.com/en/1.11/ref/settings/
 """
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+from __future__ import absolute_import
+
 import os
 import yaml
 
@@ -64,7 +66,7 @@ LOCALE_PATHS = [
 # http://django-statici18n.readthedocs.io/en/latest/settings.html
 
 with open(os.path.join(BASE_DIR, 'poll/translations/config.yaml'), 'r') as locale_config_file:
-    locale_config = yaml.load(locale_config_file)
+    locale_config = yaml.safe_load(locale_config_file)
 
     LANGUAGES = [
         (code, code,)

@@ -21,6 +21,8 @@
 # "AGPLv3".  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from __future__ import absolute_import
+
 from xblockutils.base_test import SeleniumBaseTest
 from mock import patch
 
