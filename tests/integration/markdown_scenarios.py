@@ -51,26 +51,31 @@ ddt_scenarios = [
         """<h3>This is some feedback</h3>
 <p><a href="http://www.example.com">This is a link</a></p>
 <p><a href="http://www.example.com" target="_blank">This is also a link.</a></p>
-<p>This is a paragraph with <em>emphasized</em> and <strong>bold</strong> text, and <strong><em>both</em></strong>.</p>""",
+<p>This is a paragraph with <em>emphasized</em> and <strong>bold</strong> text, and \
+<strong><em>both</em></strong>.</p>""",
         False
     ],
     [
-        "Poll Markdown", "label.poll-answer-text", "<p>I <em>feel</em> like this test will <strong>pass</strong><code>test</code>.</p>",
+        "Poll Markdown", "label.poll-answer-text",
+        "<p>I <em>feel</em> like this test will <strong>pass</strong><code>test</code>.</p>",
         True, False
     ],
     [
-        "Poll Markdown", "label.poll-answer-label", "<p>I <em>feel</em> like this test will <strong>pass</strong><code>test</code>.</p>",
+        "Poll Markdown", "label.poll-answer-label",
+        "<p>I <em>feel</em> like this test will <strong>pass</strong><code>test</code>.</p>",
         False, True
     ],
     [
-        "Survey Markdown", '.survey-question', "<p>I <em>feel</em> like this test will <strong>pass</strong><code>test</code>.</p>"
+        "Survey Markdown", '.survey-question',
+        "<p>I <em>feel</em> like this test will <strong>pass</strong><code>test</code>.</p>"
     ],
     [
         "Survey Markdown", '.poll-feedback',
         """<h3>This is some feedback</h3>
 <p><a href="http://www.example.com">This is a link</a></p>
 <p><a href="http://www.example.com" target="_blank">This is also a link.</a></p>
-<p>This is a paragraph with <em>emphasized</em> and <strong>bold</strong> text, and <strong><em>both</em></strong>.</p>""",
+<p>This is a paragraph with <em>emphasized</em> and <strong>bold</strong> text, and \
+<strong><em>both</em></strong>.</p>""",
         False
     ],
 ]

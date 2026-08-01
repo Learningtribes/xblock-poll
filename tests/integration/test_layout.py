@@ -25,6 +25,8 @@
 Test to make sure the layout for results is sane when taking images into
 account.
 """
+from __future__ import absolute_import
+
 from ddt import ddt, unpack, data
 from tests.integration.base_test import PollBaseTest
 

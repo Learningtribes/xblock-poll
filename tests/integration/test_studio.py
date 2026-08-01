@@ -24,11 +24,13 @@
 """
 Runs tests for the studio views.
 """
+from __future__ import absolute_import
+
 from ddt import ddt, unpack, data
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.wait import WebDriverWait
-from base_test import PollBaseTest
-from studio_scenarios import ddt_scenarios
+from .base_test import PollBaseTest
+from .studio_scenarios import ddt_scenarios
 
 
 @ddt
@@ -80,4 +82,3 @@ class StudioTest(PollBaseTest):
         self.go_to_page(page_name, css_selector='div.poll-block')
         answers = [element.text for element in self.browser.find_elements_by_css_selector(answer_css_selector)]
         self.assertEqual(answers[-2:], results)
-

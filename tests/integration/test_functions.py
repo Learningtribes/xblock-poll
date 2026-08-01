@@ -25,6 +25,8 @@ Tests a realistic, configured Poll to make sure that everything works as it
 should.
 """
 
+from __future__ import absolute_import
+
 from .base_test import PollBaseTest
 
 
