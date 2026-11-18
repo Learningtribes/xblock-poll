@@ -22,8 +22,6 @@
 #
 """Setup for poll XBlock."""
 
-from __future__ import absolute_import
-
 import os
 from setuptools import setup
 
@@ -51,17 +49,12 @@ setup(
     packages=[
         'poll',
     ],
+    python_requires='>=3.10',
     install_requires=[
-        'XBlock>=1.2,<1.3',
-        'xblock-utils==1.2.0',
-        'markdown>=2.6.11,<3.4',
-        'ddt==0.8.0',
-        'mock==1.0.1',
-        'six>=1.10,<2',
-    ],
-    dependency_links=[
-        'git+https://github.com/Learningtribes/xblock-utils.git@'
-        'ec95e5e718c4144dc8a43d116a545f210d929667#egg=xblock-utils'
+        'Django>=5.2,<6',
+        'XBlock>=6.1,<7',
+        'markdown>=3.4,<4',
+        'webob>=1.8,<2',
     ],
     entry_points={
         'xblock.v1': [

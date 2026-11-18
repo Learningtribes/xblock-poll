@@ -21,15 +21,12 @@
 # along with this program in a file in the toplevel directory called
 # "AGPLv3".  If not, see <http://www.gnu.org/licenses/>.
 #
-from __future__ import absolute_import
-
 from collections import OrderedDict
 import functools
 import json
 import time
+from importlib.resources import files
 
-import pkg_resources
-import six
 from markdown import markdown
 from webob import Response
 
@@ -37,9 +34,9 @@ from django import utils
 from xblock.core import XBlock
 from xblock.fields import Scope, String, Dict, List, Boolean, Integer
 from xblock.fragment import Fragment
-from xblockutils.publish_event import PublishEventMixin
-from xblockutils.resources import ResourceLoader
-from xblockutils.settings import XBlockWithSettingsMixin, ThemableXBlockMixin
+from xblock.utils.publish_event import PublishEventMixin
+from xblock.utils.resources import ResourceLoader
+from xblock.utils.settings import XBlockWithSettingsMixin, ThemableXBlockMixin
 from .utils import _, DummyTranslationService
 
 try:
@@ -70,13 +67,17 @@ class ResourceMixin(XBlockWithSettingsMixin, ThemableXBlockMixin):
     @staticmethod
     def resource_string(path):
         """Handy helper for getting resources from our kit."""
-        data = pkg_resources.resource_string(__name__, path)
+        data = files('poll').joinpath(path.lstrip('/')).read_bytes()
         return data.decode("utf8")
 
     @property
     def i18n_service(self):
         """ Obtains translation service """
         return self.runtime.service(self, "i18n") or DummyTranslationService()
+
+    def ugettext(self, text):
+        """Translate text with the XBlock i18n service."""
+        return self.i18n_service.gettext(text)
 
     def get_translation_content(self):
         try:
@@ -135,8 +136,8 @@ class CSVExportMixin(object):
 
         # Make sure we nail down our state before sending off an asynchronous task.
         async_result = export_csv_data.delay(
-            six.text_type(getattr(self.scope_ids, 'usage_id', None)),
-            six.text_type(getattr(self.runtime, 'course_id', 'course_id')),
+            str(getattr(self.scope_ids, 'usage_id', None)),
+            str(getattr(self.runtime, 'course_id', 'course_id')),
         )
         if not async_result.ready():
             self.active_export_task_id = async_result.id
@@ -185,7 +186,10 @@ class CSVExportMixin(object):
         return dict(report_store.links_for(course_key)).get(self.last_export_result['report_filename'])
 
     def student_module_queryset(self):
-        from courseware.models import StudentModule  # pylint: disable=import-error
+        try:
+            from lms.djangoapps.courseware.models import StudentModule  # pylint: disable=import-error
+        except ImportError:
+            from courseware.models import StudentModule  # pylint: disable=import-error
         return StudentModule.objects.select_related('student').filter(
             course_id=self.runtime.course_id,
             module_state_key=self.scope_ids.usage_id,
@@ -200,7 +204,7 @@ class CSVExportMixin(object):
             else:
                 self.last_export_result = {'error': u'Unexpected result: {}'.format(repr(task_result.result))}
         else:
-            self.last_export_result = {'error': six.text_type(task_result.result)}
+            self.last_export_result = {'error': str(task_result.result)}
 
     def prepare_data(self):
         """
@@ -270,7 +274,7 @@ class PollBase(XBlock, ResourceMixin, PublishEventMixin):
         if hasattr(self, 'location'):
             return self.location.html_id()  # pylint: disable=no-member
 
-        return six.text_type(self.scope_ids.usage_id)
+        return str(self.scope_ids.usage_id)
 
     def img_alt_mandatory(self):
         """
@@ -444,7 +448,7 @@ class ListOrString(List):
     def from_json(self, value):
         if value is None or isinstance(value, list):
             return value
-        elif isinstance(value, six.string_types):
+        elif isinstance(value, str):
             return [value]
         else:
             raise TypeError('Value stored in a List must be None or a list, found %s' % type(value))

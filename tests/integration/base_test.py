@@ -24,7 +24,7 @@
 from __future__ import absolute_import
 
 from xblockutils.base_test import SeleniumBaseTest
-from mock import patch
+from unittest.mock import patch
 
 
 # Default names for inputs for polls/surveys

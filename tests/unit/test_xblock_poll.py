@@ -4,7 +4,7 @@ import unittest
 import json
 from datetime import datetime
 
-from mock import Mock, patch
+from unittest.mock import Mock, patch
 from xblock.field_data import DictFieldData
 
 from poll.poll import ListOrString, PollBlock, SurveyBlock

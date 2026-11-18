@@ -33,12 +33,7 @@ node_requirements: ## Install requirements for handlebar templates i18n extracti
 	npm install
 
 python_requirements: ## install development environment requirements
-	pip install -r requirements.txt --exists-action w
-	pip install -r requirements-dev.txt --exists-action w
-	cd $(VIRTUAL_ENV)/src/xblock-sdk && \
-		pip install -r requirements/base.txt && \
-		pip install -r requirements/test.txt
-	pip install -e .
+	pip install -r requirements-dev.txt
 
 requirements: node_requirements python_requirements ## install development environment requirements
 	@echo "Finished installing requirements."
@@ -57,9 +52,8 @@ install_linux_dev_firefox: ## Downloads custom version of firefox for Selenium i
 linux_dev_test: ## Run tests in development environment to use custom firefox
 	PATH=".firefox/firefox:$(PATH)" make test
 
-test: ## run tests in the current virtualenv
-	mkdir -p var  # for var/workbench.log
-	python run_tests.py --with-coverage --cover-package=poll
+test: ## run unit tests in the current virtualenv
+	python -m unittest tests.unit.test_xblock_poll
 
 selfcheck: ## check that the Makefile is well-formed
 	@echo "The Makefile is well-formed."
